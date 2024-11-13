@@ -1,0 +1,5 @@
+fastapi
+pdf2image
+python-dotenv
+python-multipart
+uvicorn

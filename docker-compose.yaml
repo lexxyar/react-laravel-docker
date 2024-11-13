@@ -1,0 +1,133 @@
+networks:
+  dev:
+    driver: "bridge"
+
+services:
+  nginx:
+    image: nginx
+    container_name: nginx
+    restart: unless-stopped
+    ports:
+      # - "8088:80"
+      - 80:80
+    volumes:
+      - ./${LARAVEL_FOLDER}:/var/www
+      - ./.docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+      - ./.docker/nginx/logs/:/var/logs/nginx/
+    depends_on:
+      - laravel
+      - next
+      - fastapi
+      - mysql
+    networks:
+      - dev
+
+  next:
+    build:
+      context: .
+      dockerfile: ./.docker/next/Dockerfile
+      args:
+        NEXTJS_FOLDER: ${NEXTJS_FOLDER}
+    container_name: nextjs
+    # ports:
+      # - 3080:3000
+    volumes:
+      - ./${NEXTJS_FOLDER}:/app-next
+    networks: 
+      - dev
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: ./.docker/fastapi/Dockerfile
+      args:
+        FASTAPI_FOLDER: ${FASTAPI_FOLDER}
+    container_name: fastapi
+    # ports:
+      # - 7080:7000
+    volumes:
+      - ./${FASTAPI_FOLDER}:/app-fastapi
+    networks:
+      - dev
+
+  laravel:
+    build:
+      context: .
+      dockerfile: ./.docker/laravel/Dockerfile
+    container_name: laravel
+    restart: unless-stopped
+    user: ${PHP_UID}:${PHP_GID}
+    volumes:
+      - ./${LARAVEL_FOLDER}:/var/www
+    # ports:
+      # - "8080:8080"
+    depends_on:
+      - mysql
+      # - redis
+    networks:
+      - dev
+
+  #  MySQL
+  mysql:
+    image: mysql:latest
+    container_name: mysql
+    restart: unless-stopped
+    tty: true
+    # ports:
+      # - "3306:3306"
+    # expose:
+      # - "3306"
+    volumes:
+      - ./.docker/mysql:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      SERVICE_TAG: dev
+      SERVICE_NAME: mysql
+    networks:
+      - dev
+
+  #  Email server/intercepter
+  mailpit:
+    image: axllent/mailpit
+    container_name: mailpit
+    volumes:
+      - ./.docker/mailpit:/maildir
+    ports:
+      - "8025:8025"
+      # - "1025:1025"
+    networks:
+      - dev
+
+  # PHP my admin for database
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: phpmyadmin
+    restart: always
+    depends_on:
+      - laravel
+      - mysql
+    ports:
+      - "8081:80"
+    links:
+      - mysql:mysql
+    environment:
+      - PMA_ARBITRARY=1
+      - PMA_HOST=db
+    networks:
+      - dev
+
+  # Redis Server for Cache
+  redis:
+    image: redis:latest
+    container_name: redis
+    volumes:
+      - ./.docker/cache:/data
+    # ports:
+      # - "6379:6379"
+    restart: always
+    command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD}"
+    networks:
+      - documentso

@@ -33,6 +33,8 @@ services:
       # - 3080:3000
     volumes:
       - ./${NEXTJS_FOLDER}:/app-next
+      - /app-next/.next
+      - /app-next/node_modules
     networks: 
       - dev
 

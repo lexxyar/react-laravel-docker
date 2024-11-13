@@ -130,4 +130,4 @@ services:
     restart: always
     command: redis-server --appendonly yes --requirepass "${REDIS_PASSWORD}"
     networks:
-      - documentso
+      - dev
